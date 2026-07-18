@@ -32,7 +32,6 @@ VEHICLE_RANGE_MILES = 500
 MILES_PER_GALLON = 10
 TANK_GALLONS = VEHICLE_RANGE_MILES / MILES_PER_GALLON   # 50 — never type this by hand
 START_TANK_GALLONS = TANK_GALLONS                        # full tank
-
 CORRIDOR_TOLERANCE_MILES = 20
 ROUTE_SAMPLE_SPACING_MILES = 10
 OSRM_BASE_URL = "https://router.project-osrm.org"
@@ -132,3 +131,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+DATA_DIR = BASE_DIR / "data"
+FUEL_PRICES_CSV = DATA_DIR / "fuel-prices-for-be-assessment.csv"
+US_CITIES_CSV = DATA_DIR / "us_cities.csv"
