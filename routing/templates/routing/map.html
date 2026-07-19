@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fuel Route</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+      }
+      #map {
+        height: 100vh;
+        width: 100%;
+      }
+      #panel {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: #fff;
+        padding: 14px 16px;
+        border-radius: 8px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+        max-width: 260px;
+        font-size: 14px;
+      }
+      #panel h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+      }
+      .stat {
+        color: #444;
+      }
+      .stat b {
+        color: #111;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="panel"><h3>Loading route…</h3></div>
+    <script>
+      const map = L.map("map").setView([39.5, -98.35], 4);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
+        maxZoom: 18,
+      }).addTo(map);
+
+      const params = new URLSearchParams(window.location.search);
+      const start = params.get("start"),
+        finish = params.get("finish");
+      const panel = document.getElementById("panel");
+
+      if (!start || !finish) {
+        panel.innerHTML =
+          "<h3>Add ?start=City, ST&finish=City, ST to the URL</h3>";
+      } else {
+        fetch(
+          `/api/route/?start=${encodeURIComponent(start)}&finish=${encodeURIComponent(finish)}`,
+        )
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.error) {
+              panel.innerHTML = `<h3>Error</h3><p>${data.error}</p>`;
+              return;
+            }
+
+            // route line — geometry is [lon,lat], Leaflet wants [lat,lon]
+            const line = data.route.geometry.map((c) => [c[1], c[0]]);
+            const poly = L.polyline(line, {
+              color: "#2563eb",
+              weight: 4,
+            }).addTo(map);
+            map.fitBounds(poly.getBounds(), { padding: [40, 40] });
+
+            // fuel stops
+            data.stops.forEach((s, i) => {
+              // find the route point nearest this stop's mile-marker for a lat/lon
+              const frac = s.mile / data.route.distance_miles;
+              const idx = Math.min(
+                line.length - 1,
+                Math.round(frac * (line.length - 1)),
+              );
+              L.marker(line[idx])
+                .addTo(map)
+                .bindPopup(
+                  `Stop ${i + 1}<br>$${s.price.toFixed(3)}/gal<br>${s.gallons.toFixed(1)} gal`,
+                );
+            });
+
+            panel.innerHTML = `
+            <h3>${start} → ${finish}</h3>
+            <p class="stat">Distance: <b>${data.route.distance_miles.toFixed(0)} mi</b></p>
+            <p class="stat">Fuel stops: <b>${data.stops.length}</b></p>
+            <p class="stat">Total cost: <b>$${data.fuel.total_cost_usd.toFixed(2)}</b></p>
+            <p class="stat">API calls: <b>${data.meta.external_api_calls}</b></p>`;
+          })
+          .catch((e) => {
+            panel.innerHTML = `<h3>Error</h3><p>${e}</p>`;
+          });
+      }
+    </script>
+  </body>
+</html>
